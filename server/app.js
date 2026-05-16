@@ -5,26 +5,24 @@ const sqlite3 = require('sqlite3').verbose();
 const multer = require('multer');
 const bcrypt = require('bcryptjs');
 const nodemailer = require('nodemailer');
+const cors = require('cors');
 const fs = require('fs');
 
 const app = express();
 
 // =============================
-// パス設定（Render対応）
+// パス設定
 // =============================
 const IS_PROD = process.env.NODE_ENV === 'production';
-// Renderでは /opt/render/project/src/server/ 配下に永続ディスクをマウントする想定
-// ローカルは従来通り server/ 配下
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
 const DB_PATH = path.join(__dirname, 'db.sqlite');
 
-// uploadsフォルダがなければ作成
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 const db = new sqlite3.Database(DB_PATH);
 
 // =============================
-// Gmail設定（環境変数 or 直書き）
+// Gmail設定
 // =============================
 const GMAIL_USER = process.env.GMAIL_USER || 'あなたのGmailアドレス@gmail.com';
 const GMAIL_PASS = process.env.GMAIL_PASS || 'アプリパスワード16桁';
@@ -84,6 +82,8 @@ db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS orders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER,
+    user_email TEXT,
+    user_name TEXT,
     items TEXT,
     total INTEGER NOT NULL,
     info TEXT,
@@ -103,6 +103,14 @@ const upload = multer({ storage });
 // =============================
 // ミドルウェア
 // =============================
+// CORS設定（本番URL許可）
+app.use(cors({
+  origin: IS_PROD
+    ? 'https://onlineshopping-47hh.onrender.com'
+    : 'http://localhost:4000',
+  credentials: true
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
@@ -111,7 +119,11 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'change_this_secret',
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: IS_PROD, sameSite: IS_PROD ? 'none' : 'lax' }
+  cookie: {
+    secure: IS_PROD,
+    sameSite: IS_PROD ? 'none' : 'lax',
+    maxAge: 1000 * 60 * 60 * 24 // 24時間
+  }
 }));
 
 // =============================
@@ -145,7 +157,7 @@ app.post('/api/user/register', async (req, res) => {
         if (err.message.includes('UNIQUE')) return res.status(409).json({ error: 'このメールアドレスは既に登録されています' });
         return res.status(500).json({ error: err.message });
       }
-      await sendWelcomeMail(email, name); // 登録完了メール送信
+      await sendWelcomeMail(email, name);
       res.json({ ok: true, id: this.lastID });
     }
   );
@@ -177,15 +189,20 @@ app.get('/api/user/orders', (req, res) => {
 });
 
 // =============================
-// 注文保存
+// 注文保存（セッションなしでも動作）
 // =============================
 app.post('/api/orders', (req, res) => {
   const { info, items, total } = req.body || {};
-  const userId = req.session.user ? req.session.user.id : null;
   if (!items || !total) return res.status(400).json({ error: 'missing fields' });
+
+  // セッションがあればuser_id、なければinfoからメール・名前を取得
+  const userId = req.session.user ? req.session.user.id : null;
+  const userEmail = (info && info.email) || null;
+  const userName = (info && info.name) || null;
+
   db.run(
-    'INSERT INTO orders (user_id, items, total, info) VALUES (?, ?, ?, ?)',
-    [userId, items, total, JSON.stringify(info || {})],
+    'INSERT INTO orders (user_id, user_email, user_name, items, total, info) VALUES (?, ?, ?, ?, ?, ?)',
+    [userId, userEmail, userName, items, total, JSON.stringify(info || {})],
     function(err) {
       if (err) return res.status(500).json({ error: err.message });
       res.json({ ok: true, id: this.lastID });
