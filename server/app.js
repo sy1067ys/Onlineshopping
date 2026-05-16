@@ -5,23 +5,33 @@ const sqlite3 = require('sqlite3').verbose();
 const multer = require('multer');
 const bcrypt = require('bcryptjs');
 const nodemailer = require('nodemailer');
+const fs = require('fs');
 
 const app = express();
+
+// =============================
+// パス設定（Render対応）
+// =============================
+const IS_PROD = process.env.NODE_ENV === 'production';
+// Renderでは /opt/render/project/src/server/ 配下に永続ディスクをマウントする想定
+// ローカルは従来通り server/ 配下
+const UPLOADS_DIR = path.join(__dirname, 'uploads');
 const DB_PATH = path.join(__dirname, 'db.sqlite');
+
+// uploadsフォルダがなければ作成
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
 const db = new sqlite3.Database(DB_PATH);
 
 // =============================
-// Gmail設定 ※ここを自分のGmailに変更してください
+// Gmail設定（環境変数 or 直書き）
 // =============================
-const GMAIL_USER = 'あなたのGmailアドレス@gmail.com';  // 送信元Gmailアドレス
-const GMAIL_PASS = 'アプリパスワード16桁';              // Googleアプリパスワード
+const GMAIL_USER = process.env.GMAIL_USER || 'あなたのGmailアドレス@gmail.com';
+const GMAIL_PASS = process.env.GMAIL_PASS || 'アプリパスワード16桁';
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
-  auth: {
-    user: GMAIL_USER,
-    pass: GMAIL_PASS,
-  },
+  auth: { user: GMAIL_USER, pass: GMAIL_PASS },
 });
 
 async function sendWelcomeMail(toEmail, toName) {
@@ -41,9 +51,6 @@ async function sendWelcomeMail(toEmail, toName) {
             <p style="margin:0;color:#6b7280;font-size:0.9rem">登録メールアドレス</p>
             <p style="margin:4px 0 0;font-weight:700;color:#111">${toEmail}</p>
           </div>
-          <a href="http://localhost:4000/index.html" style="display:inline-block;background:#111827;color:#fff;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:700">
-            ショップを見る
-          </a>
           <p style="margin-top:24px;font-size:0.8rem;color:#9ca3af">© YOICHI STORE</p>
         </div>
       `,
@@ -54,7 +61,9 @@ async function sendWelcomeMail(toEmail, toName) {
   }
 }
 
-// --- DBテーブル初期化 ---
+// =============================
+// DBテーブル初期化
+// =============================
 db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS products (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -66,7 +75,7 @@ db.serialize(() => {
   )`);
   db.run(`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
+    name TEXT NOT NULL DEFAULT '',
     email TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
     role TEXT DEFAULT 'user',
@@ -74,30 +83,35 @@ db.serialize(() => {
   )`);
   db.run(`CREATE TABLE IF NOT EXISTS orders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
+    user_id INTEGER,
     items TEXT,
     total INTEGER NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(user_id) REFERENCES users(id)
+    info TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 });
 
-// --- multer ---
+// =============================
+// multer
+// =============================
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, path.join(__dirname, 'uploads')),
+  destination: (req, file, cb) => cb(null, UPLOADS_DIR),
   filename: (req, file, cb) => cb(null, Date.now() + '_' + file.originalname)
 });
 const upload = multer({ storage });
 
-// --- ミドルウェア ---
+// =============================
+// ミドルウェア
+// =============================
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(UPLOADS_DIR));
 app.use(session({
-  secret: 'change_this_secret',
+  secret: process.env.SESSION_SECRET || 'change_this_secret',
   resave: false,
   saveUninitialized: false,
+  cookie: { secure: IS_PROD, sameSite: IS_PROD ? 'none' : 'lax' }
 }));
 
 // =============================
@@ -131,8 +145,7 @@ app.post('/api/user/register', async (req, res) => {
         if (err.message.includes('UNIQUE')) return res.status(409).json({ error: 'このメールアドレスは既に登録されています' });
         return res.status(500).json({ error: err.message });
       }
-      // 登録完了メールを送信
-      await sendWelcomeMail(email, name);
+      await sendWelcomeMail(email, name); // 登録完了メール送信
       res.json({ ok: true, id: this.lastID });
     }
   );
@@ -148,10 +161,7 @@ app.post('/api/user/login', (req, res) => {
     if (err || !user) return res.status(401).json({ error: 'メールアドレスまたはパスワードが違います' });
     if (!bcrypt.compareSync(password, user.password)) return res.status(401).json({ error: 'メールアドレスまたはパスワードが違います' });
     req.session.user = { id: user.id, email: user.email, role: user.role };
-    res.json({
-      ok: true,
-      user: { id: user.id, name: user.name, email: user.email, created_at: user.created_at }
-    });
+    res.json({ ok: true, user: { id: user.id, name: user.name, email: user.email, created_at: user.created_at } });
   });
 });
 
@@ -164,6 +174,23 @@ app.get('/api/user/orders', (req, res) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(rows || []);
   });
+});
+
+// =============================
+// 注文保存
+// =============================
+app.post('/api/orders', (req, res) => {
+  const { info, items, total } = req.body || {};
+  const userId = req.session.user ? req.session.user.id : null;
+  if (!items || !total) return res.status(400).json({ error: 'missing fields' });
+  db.run(
+    'INSERT INTO orders (user_id, items, total, info) VALUES (?, ?, ?, ?)',
+    [userId, items, total, JSON.stringify(info || {})],
+    function(err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ ok: true, id: this.lastID });
+    }
+  );
 });
 
 // =============================
@@ -206,25 +233,9 @@ app.delete('/api/products/:id', (req, res) => {
   });
 });
 
-
 // =============================
-// 注文保存
+// エラーハンドラ
 // =============================
-app.post('/api/orders', (req, res) => {
-  const { info, items, total } = req.body || {};
-  const userId = req.session.user ? req.session.user.id : null;
-  if (!items || !total) return res.status(400).json({ error: 'missing fields' });
-  db.run(
-    'INSERT INTO orders (user_id, items, total) VALUES (?, ?, ?)',
-    [userId, items, total],
-    function(err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ ok: true, id: this.lastID });
-    }
-  );
-});
-
-// --- エラーハンドラ ---
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: err.message || 'internal error' });
