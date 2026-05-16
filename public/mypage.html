@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>マイページ - YOICHI STORE</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    .mypage-wrap { max-width: 760px; margin: 48px auto; padding: 0 18px; }
+    .page-title {
+      font-size: 1.6rem; font-weight: 800; margin-bottom: 28px;
+      background: linear-gradient(90deg, #7dd3fc 0%, #a78bfa 40%, #ff9a9e 70%, #ffd166 100%);
+      -webkit-background-clip: text; background-clip: text;
+      color: transparent; -webkit-text-fill-color: transparent;
+    }
+    .card-section {
+      background: #fff; border-radius: 14px;
+      box-shadow: 0 8px 28px rgba(16,24,40,0.07);
+      padding: 24px 28px; margin-bottom: 20px;
+    }
+    .card-section h3 { font-size: 1rem; font-weight: 800; margin: 0 0 18px; color: #111; }
+    .profile-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f3f4f6; font-size: 0.95rem; }
+    .profile-row:last-child { border-bottom: none; }
+    .profile-label { color: #6b7280; font-weight: 600; }
+    .profile-value { color: #111; font-weight: 700; }
+    .order-item { padding: 14px 0; border-bottom: 1px solid #f3f4f6; }
+    .order-item:last-child { border-bottom: none; }
+    .order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .order-id { font-size: 0.82rem; color: #9ca3af; }
+    .order-date { font-size: 0.82rem; color: #9ca3af; }
+    .order-total { font-weight: 800; color: #ef4444; }
+    .order-products { font-size: 0.9rem; color: #374151; }
+    .badge-status {
+      display: inline-block; padding: 3px 10px; border-radius: 999px;
+      font-size: 0.78rem; font-weight: 700; background: #f0fdf4; color: #16a34a;
+    }
+    .empty-note { color: #9ca3af; font-size: 0.95rem; text-align: center; padding: 28px 0; }
+    .logout-btn {
+      background: none; border: 1px solid #e5e7eb; color: #6b7280;
+      padding: 10px 20px; border-radius: 10px; cursor: pointer;
+      font-family: inherit; font-size: 0.9rem; transition: all 150ms;
+    }
+    .logout-btn:hover { background: #fee2e2; border-color: #fca5a5; color: #ef4444; }
+    .back-link { display: inline-block; margin-bottom: 20px; color: #6b7280; text-decoration: none; font-size: 0.9rem; }
+    .back-link:hover { color: #111; }
+    .top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }
+  </style>
+</head>
+<body>
+  <div class="mypage-wrap">
+    <a href="index.html" class="back-link">← ショップに戻る</a>
+    <div class="top-row">
+      <div class="page-title">マイページ</div>
+      <button class="logout-btn" onclick="doLogout()">ログアウト</button>
+    </div>
+
+    <!-- プロフィール -->
+    <div class="card-section">
+      <h3>👤 プロフィール</h3>
+      <div class="profile-row">
+        <span class="profile-label">お名前</span>
+        <span class="profile-value" id="prof-name">—</span>
+      </div>
+      <div class="profile-row">
+        <span class="profile-label">メールアドレス</span>
+        <span class="profile-value" id="prof-email">—</span>
+      </div>
+      <div class="profile-row">
+        <span class="profile-label">登録日</span>
+        <span class="profile-value" id="prof-created">—</span>
+      </div>
+    </div>
+
+    <!-- 注文履歴 -->
+    <div class="card-section">
+      <h3>🛍 注文履歴</h3>
+      <div id="order-list"><div class="empty-note">読み込み中...</div></div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:4000' : '';
+    const user = JSON.parse(localStorage.getItem('yoichi_user') || 'null');
+
+    // 未ログインならログインページへ
+    if (!user) window.location.href = 'login.html';
+
+    // プロフィール表示
+    document.getElementById('prof-name').textContent = user.name || '—';
+    document.getElementById('prof-email').textContent = user.email || '—';
+    document.getElementById('prof-created').textContent =
+      user.created_at ? new Date(user.created_at).toLocaleDateString('ja-JP') : '—';
+
+    // 注文履歴取得
+    async function loadOrders() {
+      const listEl = document.getElementById('order-list');
+      try {
+        const res = await fetch(API_BASE + '/api/user/orders', { credentials: 'include' });
+        if (!res.ok) throw new Error('取得失敗');
+        const orders = await res.json();
+        if (!orders.length) {
+          listEl.innerHTML = '<div class="empty-note">注文履歴はありません</div>';
+          return;
+        }
+        listEl.innerHTML = orders.map(o => `
+          <div class="order-item">
+            <div class="order-header">
+              <span class="order-id">注文 #${o.id}</span>
+              <span class="order-date">${new Date(o.created_at).toLocaleDateString('ja-JP')}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div class="order-products">${o.items || '商品情報なし'}</div>
+              <div style="display:flex;gap:10px;align-items:center">
+                <span class="badge-status">完了</span>
+                <span class="order-total">¥${parseInt(o.total).toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      } catch(e) {
+        listEl.innerHTML = '<div class="empty-note">注文履歴を取得できませんでした</div>';
+      }
+    }
+
+    function doLogout() {
+      localStorage.removeItem('yoichi_user');
+      window.location.href = 'index.html';
+    }
+
+    loadOrders();
+  </script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>注文完了 - YOICHI STORE</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    .complete-wrap { max-width: 560px; margin: 80px auto; padding: 0 18px; text-align: center; }
+    .steps { display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 40px; }
+    .step { font-size: 0.82rem; font-weight: 700; padding: 6px 14px; border-radius: 999px; background: #f3f4f6; color: #9ca3af; }
+    .step.active { background: #111827; color: #fff; }
+    .step-arrow { color: #d1d5db; margin: 0 6px; font-size: 0.9rem; }
+    .check-icon {
+      width: 80px; height: 80px; background: linear-gradient(135deg, #7dd3fc, #a78bfa);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 24px; box-shadow: 0 12px 32px rgba(167,139,250,0.3);
+    }
+    .check-icon svg { width: 40px; height: 40px; }
+    .complete-title {
+      font-size: 1.7rem; font-weight: 800; margin-bottom: 12px;
+      background: linear-gradient(90deg, #7dd3fc 0%, #a78bfa 40%, #ff9a9e 70%, #ffd166 100%);
+      -webkit-background-clip: text; background-clip: text;
+      color: transparent; -webkit-text-fill-color: transparent;
+    }
+    .complete-msg { color: #6b7280; font-size: 0.97rem; line-height: 1.8; margin-bottom: 32px; }
+    .info-card { background: #fff; border-radius: 14px; box-shadow: 0 8px 28px rgba(16,24,40,0.07); padding: 22px 24px; margin-bottom: 28px; text-align: left; }
+    .info-card h4 { font-size: 0.9rem; font-weight: 800; color: #374151; margin: 0 0 14px; }
+    .info-row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid #f3f4f6; font-size: 0.88rem; }
+    .info-row:last-child { border-bottom: none; }
+    .info-label { color: #9ca3af; }
+    .info-value { font-weight: 700; color: #111; }
+    .btn-group { display: flex; flex-direction: column; gap: 10px; }
+    .btn-primary { display: block; background: #111827; color: #fff; padding: 14px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 1rem; transition: background 150ms; }
+    .btn-primary:hover { background: #374151; }
+    .btn-secondary { display: block; background: #f3f4f6; color: #374151; padding: 13px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 0.95rem; transition: background 150ms; }
+    .btn-secondary:hover { background: #e5e7eb; }
+  </style>
+</head>
+<body>
+  <div class="complete-wrap">
+    <div class="steps">
+      <span class="step">① 情報入力</span>
+      <span class="step-arrow">›</span>
+      <span class="step">② 内容確認</span>
+      <span class="step-arrow">›</span>
+      <span class="step active">③ 完了</span>
+    </div>
+
+    <div class="check-icon">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+
+    <div class="complete-title">ご注文ありがとうございます！</div>
+    <p class="complete-msg">
+      ご注文を受け付けました。<br>
+      確認メールをご登録のメールアドレスへ送信しています。<br>
+      しばらくお待ちください。
+    </p>
+
+    <div class="info-card">
+      <h4>📋 注文情報</h4>
+      <div class="info-row"><span class="info-label">お名前</span><span class="info-value" id="r-name">—</span></div>
+      <div class="info-row"><span class="info-label">メール</span><span class="info-value" id="r-email">—</span></div>
+      <div class="info-row"><span class="info-label">お届け先</span><span class="info-value" id="r-addr">—</span></div>
+      <div class="info-row"><span class="info-label">お支払い</span><span class="info-value" id="r-pay">—</span></div>
+    </div>
+
+    <div class="btn-group">
+      <a href="index.html" class="btn-primary">ショッピングを続ける</a>
+      <a href="mypage.html" class="btn-secondary">注文履歴を確認する</a>
+    </div>
+  </div>
+
+  <script>
+    // sessionStorageから情報を表示（confirm.htmlで保存済み）
+    const info = JSON.parse(sessionStorage.getItem('complete_info') || 'null');
+    if (info) {
+      document.getElementById('r-name').textContent = info.name;
+      document.getElementById('r-email').textContent = info.email;
+      document.getElementById('r-addr').textContent = info.pref + info.addr + (info.addr2 ? ' ' + info.addr2 : '');
+      document.getElementById('r-pay').textContent = info.payment === 'cod' ? '代金引換' : '銀行振込';
+      sessionStorage.removeItem('complete_info');
+    }
+  </script>
+</body>
+</html>

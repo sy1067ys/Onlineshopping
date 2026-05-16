@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>お届け先入力 - YOICHI STORE</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    .checkout-wrap { max-width: 640px; margin: 48px auto; padding: 0 18px 60px; }
+    .page-title {
+      font-size: 1.6rem; font-weight: 800; margin-bottom: 8px;
+      background: linear-gradient(90deg, #7dd3fc 0%, #a78bfa 40%, #ff9a9e 70%, #ffd166 100%);
+      -webkit-background-clip: text; background-clip: text;
+      color: transparent; -webkit-text-fill-color: transparent;
+    }
+    .steps { display: flex; align-items: center; gap: 0; margin-bottom: 28px; }
+    .step { font-size: 0.82rem; font-weight: 700; padding: 6px 14px; border-radius: 999px; background: #f3f4f6; color: #9ca3af; }
+    .step.active { background: #111827; color: #fff; }
+    .step-arrow { color: #d1d5db; margin: 0 6px; font-size: 0.9rem; }
+    .card-section { background: #fff; border-radius: 14px; box-shadow: 0 8px 28px rgba(16,24,40,0.07); padding: 24px 28px; margin-bottom: 20px; }
+    .card-section h3 { font-size: 1rem; font-weight: 800; margin: 0 0 18px; color: #111; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 0.88rem; font-weight: 700; color: #374151; margin-bottom: 6px; }
+    .form-group label span { color: #ef4444; margin-left: 2px; }
+    .form-group input, .form-group select {
+      width: 100%; padding: 12px 14px; border: 1px solid #e5e7eb;
+      border-radius: 10px; font-size: 0.97rem; font-family: inherit;
+      outline: none; transition: border-color 150ms; background: #fff;
+    }
+    .form-group input:focus, .form-group select:focus { border-color: #a78bfa; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .pay-option {
+      border: 2px solid #e5e7eb; border-radius: 12px; padding: 14px 16px;
+      margin-bottom: 10px; cursor: pointer; transition: border-color 150ms, background 150ms;
+      display: flex; align-items: flex-start; gap: 12px;
+    }
+    .pay-option:has(input:checked) { border-color: #a78bfa; background: #faf5ff; }
+    .pay-option input[type="radio"] { margin-top: 3px; accent-color: #7c3aed; }
+    .pay-option-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; }
+    .pay-option-desc { font-size: 0.83rem; color: #6b7280; line-height: 1.5; }
+    .cart-summary { background: #f9fafb; border-radius: 10px; padding: 14px 16px; margin-bottom: 18px; }
+    .summary-item { display: flex; justify-content: space-between; font-size: 0.9rem; padding: 4px 0; color: #374151; }
+    .summary-total { display: flex; justify-content: space-between; font-weight: 800; font-size: 1rem; padding-top: 10px; border-top: 1px solid #e5e7eb; margin-top: 8px; }
+    .summary-total span { color: #ef4444; }
+    .next-btn { width: 100%; padding: 15px; font-size: 1rem; border-radius: 12px; margin-top: 8px; background: #111827; color: #fff; border: none; cursor: pointer; font-family: inherit; font-weight: 700; transition: background 150ms; }
+    .next-btn:hover { background: #374151; }
+    .back-link { display: inline-block; margin-bottom: 20px; color: #6b7280; text-decoration: none; font-size: 0.9rem; }
+    .back-link:hover { color: #111; }
+  </style>
+</head>
+<body>
+  <div class="checkout-wrap">
+    <a href="cart.html" class="back-link">← カートに戻る</a>
+    <div class="page-title">ご注文手続き</div>
+    <div class="steps">
+      <span class="step active">① 情報入力</span>
+      <span class="step-arrow">›</span>
+      <span class="step">② 内容確認</span>
+      <span class="step-arrow">›</span>
+      <span class="step">③ 完了</span>
+    </div>
+
+    <!-- 注文商品サマリー -->
+    <div class="card-section">
+      <h3>🛍 注文商品</h3>
+      <div class="cart-summary">
+        <div id="summary-items"></div>
+        <div class="summary-total">合計 <span id="summary-total">¥0</span></div>
+      </div>
+    </div>
+
+    <!-- 配送先フォーム -->
+    <div class="card-section">
+      <h3>📦 お届け先</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label>お名前<span>*</span></label>
+          <input type="text" id="f-name" placeholder="山田 太郎" required>
+        </div>
+        <div class="form-group">
+          <label>電話番号<span>*</span></label>
+          <input type="tel" id="f-tel" placeholder="090-0000-0000" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>メールアドレス<span>*</span></label>
+        <input type="email" id="f-email" placeholder="you@example.com" required>
+      </div>
+      <div class="form-group">
+        <label>郵便番号<span>*</span></label>
+        <input type="text" id="f-zip" placeholder="000-0000" maxlength="8" required>
+      </div>
+      <div class="form-group">
+        <label>都道府県<span>*</span></label>
+        <select id="f-pref">
+          <option value="">選択してください</option>
+          <option>北海道</option><option>青森県</option><option>岩手県</option><option>宮城県</option>
+          <option>秋田県</option><option>山形県</option><option>福島県</option><option>茨城県</option>
+          <option>栃木県</option><option>群馬県</option><option>埼玉県</option><option>千葉県</option>
+          <option>東京都</option><option>神奈川県</option><option>新潟県</option><option>富山県</option>
+          <option>石川県</option><option>福井県</option><option>山梨県</option><option>長野県</option>
+          <option>岐阜県</option><option>静岡県</option><option>愛知県</option><option>三重県</option>
+          <option>滋賀県</option><option>京都府</option><option>大阪府</option><option>兵庫県</option>
+          <option>奈良県</option><option>和歌山県</option><option>鳥取県</option><option>島根県</option>
+          <option>岡山県</option><option>広島県</option><option>山口県</option><option>徳島県</option>
+          <option>香川県</option><option>愛媛県</option><option>高知県</option><option>福岡県</option>
+          <option>佐賀県</option><option>長崎県</option><option>熊本県</option><option>大分県</option>
+          <option>宮崎県</option><option>鹿児島県</option><option>沖縄県</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>市区町村・番地<span>*</span></label>
+        <input type="text" id="f-addr" placeholder="栃木市〇〇町1-2-3" required>
+      </div>
+      <div class="form-group">
+        <label>建物名・部屋番号</label>
+        <input type="text" id="f-addr2" placeholder="〇〇マンション101号室（任意）">
+      </div>
+    </div>
+
+    <!-- 支払い方法 -->
+    <div class="card-section">
+      <h3>💳 お支払い方法</h3>
+      <label class="pay-option">
+        <input type="radio" name="payment" value="cod" checked>
+        <div>
+          <div class="pay-option-title">代金引換</div>
+          <div class="pay-option-desc">商品お届け時に配送員へお支払いください。<br>手数料：330円（税込）</div>
+        </div>
+      </label>
+      <label class="pay-option">
+        <input type="radio" name="payment" value="bank">
+        <div>
+          <div class="pay-option-title">銀行振込</div>
+          <div class="pay-option-desc">注文確認メール記載の口座へお振込みください。<br>入金確認後に発送いたします。手数料はお客様負担となります。</div>
+        </div>
+      </label>
+    </div>
+
+    <button class="next-btn" onclick="goConfirm()">内容を確認する →</button>
+  </div>
+
+  <script>
+    const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:4000' : '';
+
+    function getCart() {
+      try {
+        const raw = JSON.parse(localStorage.getItem('yoichi_cart') || '[]');
+        const map = {};
+        raw.forEach(item => {
+          const id = String(item.id);
+          const qty = parseInt(item.qty, 10);
+          if (!id || isNaN(qty) || qty <= 0) return;
+          if (map[id]) map[id].qty += qty;
+          else map[id] = { id, qty };
+        });
+        return Object.values(map);
+      } catch { return []; }
+    }
+
+    // カートが空なら戻す
+    const cart = getCart();
+    if (!cart.length) window.location.href = 'cart.html';
+
+    // ログイン済みなら自動入力
+    const user = JSON.parse(localStorage.getItem('yoichi_user') || 'null');
+    if (user) {
+      if (user.name) document.getElementById('f-name').value = user.name;
+      if (user.email) document.getElementById('f-email').value = user.email;
+    }
+
+    async function loadSummary() {
+      try {
+        const res = await fetch(API_BASE + '/api/products');
+        const products = await res.json();
+        let total = 0;
+        const html = cart.map(item => {
+          const p = products.find(x => String(x.id) === String(item.id));
+          if (!p) return '';
+          const subtotal = parseInt(p.price) * item.qty;
+          total += subtotal;
+          return `<div class="summary-item"><span>${p.title} × ${item.qty}</span><span>¥${subtotal.toLocaleString()}</span></div>`;
+        }).join('');
+        document.getElementById('summary-items').innerHTML = html;
+        document.getElementById('summary-total').textContent = '¥' + total.toLocaleString();
+      } catch(e) { console.error(e); }
+    }
+
+    function goConfirm() {
+      const name  = document.getElementById('f-name').value.trim();
+      const tel   = document.getElementById('f-tel').value.trim();
+      const email = document.getElementById('f-email').value.trim();
+      const zip   = document.getElementById('f-zip').value.trim();
+      const pref  = document.getElementById('f-pref').value;
+      const addr  = document.getElementById('f-addr').value.trim();
+      const addr2 = document.getElementById('f-addr2').value.trim();
+      const payment = document.querySelector('input[name="payment"]:checked').value;
+
+      if (!name || !tel || !email || !zip || !pref || !addr) {
+        alert('必須項目をすべて入力してください');
+        return;
+      }
+
+      const info = { name, tel, email, zip, pref, addr, addr2, payment };
+      sessionStorage.setItem('checkout_info', JSON.stringify(info));
+      window.location.href = 'confirm.html';
+    }
+
+    loadSummary();
+  </script>
+</body>
+</html>

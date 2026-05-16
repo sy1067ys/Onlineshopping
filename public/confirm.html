@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>注文確認 - YOICHI STORE</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    .checkout-wrap { max-width: 640px; margin: 48px auto; padding: 0 18px 60px; }
+    .page-title {
+      font-size: 1.6rem; font-weight: 800; margin-bottom: 8px;
+      background: linear-gradient(90deg, #7dd3fc 0%, #a78bfa 40%, #ff9a9e 70%, #ffd166 100%);
+      -webkit-background-clip: text; background-clip: text;
+      color: transparent; -webkit-text-fill-color: transparent;
+    }
+    .steps { display: flex; align-items: center; gap: 0; margin-bottom: 28px; }
+    .step { font-size: 0.82rem; font-weight: 700; padding: 6px 14px; border-radius: 999px; background: #f3f4f6; color: #9ca3af; }
+    .step.active { background: #111827; color: #fff; }
+    .step-arrow { color: #d1d5db; margin: 0 6px; font-size: 0.9rem; }
+    .card-section { background: #fff; border-radius: 14px; box-shadow: 0 8px 28px rgba(16,24,40,0.07); padding: 24px 28px; margin-bottom: 20px; }
+    .card-section h3 { font-size: 1rem; font-weight: 800; margin: 0 0 16px; color: #111; }
+    .info-row { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid #f3f4f6; font-size: 0.93rem; }
+    .info-row:last-child { border-bottom: none; }
+    .info-label { color: #6b7280; font-weight: 600; min-width: 120px; }
+    .info-value { color: #111; font-weight: 700; text-align: right; }
+    .summary-item { display: flex; justify-content: space-between; font-size: 0.92rem; padding: 6px 0; color: #374151; border-bottom: 1px solid #f3f4f6; }
+    .summary-item:last-child { border-bottom: none; }
+    .summary-total { display: flex; justify-content: space-between; font-weight: 800; font-size: 1.05rem; padding-top: 12px; margin-top: 4px; }
+    .summary-total span { color: #ef4444; }
+    .pay-label { display: inline-block; background: #f0fdf4; color: #16a34a; font-weight: 700; font-size: 0.85rem; padding: 4px 12px; border-radius: 999px; }
+    .pay-desc { font-size: 0.85rem; color: #6b7280; margin-top: 10px; line-height: 1.7; background: #f9fafb; border-radius: 10px; padding: 12px 14px; }
+    .btn-row { display: flex; gap: 12px; margin-top: 8px; }
+    .back-btn { flex: 1; padding: 14px; font-size: 0.97rem; border-radius: 12px; background: #f3f4f6; color: #374151; border: none; cursor: pointer; font-family: inherit; font-weight: 700; transition: background 150ms; }
+    .back-btn:hover { background: #e5e7eb; }
+    .order-btn { flex: 2; padding: 14px; font-size: 1rem; border-radius: 12px; background: #111827; color: #fff; border: none; cursor: pointer; font-family: inherit; font-weight: 700; transition: background 150ms; }
+    .order-btn:hover { background: #374151; }
+    .order-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+    .back-link { display: inline-block; margin-bottom: 20px; color: #6b7280; text-decoration: none; font-size: 0.9rem; }
+    .back-link:hover { color: #111; }
+  </style>
+</head>
+<body>
+  <div class="checkout-wrap">
+    <a href="checkout.html" class="back-link">← 入力に戻る</a>
+    <div class="page-title">ご注文手続き</div>
+    <div class="steps">
+      <span class="step">① 情報入力</span>
+      <span class="step-arrow">›</span>
+      <span class="step active">② 内容確認</span>
+      <span class="step-arrow">›</span>
+      <span class="step">③ 完了</span>
+    </div>
+
+    <!-- お届け先確認 -->
+    <div class="card-section">
+      <h3>📦 お届け先</h3>
+      <div class="info-row"><span class="info-label">お名前</span><span class="info-value" id="c-name">—</span></div>
+      <div class="info-row"><span class="info-label">電話番号</span><span class="info-value" id="c-tel">—</span></div>
+      <div class="info-row"><span class="info-label">メール</span><span class="info-value" id="c-email">—</span></div>
+      <div class="info-row"><span class="info-label">郵便番号</span><span class="info-value" id="c-zip">—</span></div>
+      <div class="info-row"><span class="info-label">住所</span><span class="info-value" id="c-addr">—</span></div>
+    </div>
+
+    <!-- 注文商品確認 -->
+    <div class="card-section">
+      <h3>🛍 注文商品</h3>
+      <div id="c-items"></div>
+      <div class="summary-total">合計 <span id="c-total">¥0</span></div>
+    </div>
+
+    <!-- 支払い方法確認 -->
+    <div class="card-section">
+      <h3>💳 お支払い方法</h3>
+      <span class="pay-label" id="c-pay-label">—</span>
+      <div class="pay-desc" id="c-pay-desc"></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="back-btn" onclick="history.back()">← 戻る</button>
+      <button class="order-btn" id="order-btn" onclick="placeOrder()">この内容で注文する</button>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:4000' : '';
+
+    function getCart() {
+      try {
+        const raw = JSON.parse(localStorage.getItem('yoichi_cart') || '[]');
+        const map = {};
+        raw.forEach(item => {
+          const id = String(item.id);
+          const qty = parseInt(item.qty, 10);
+          if (!id || isNaN(qty) || qty <= 0) return;
+          if (map[id]) map[id].qty += qty; else map[id] = { id, qty };
+        });
+        return Object.values(map);
+      } catch { return []; }
+    }
+
+    const info = JSON.parse(sessionStorage.getItem('checkout_info') || 'null');
+    if (!info) { window.location.href = 'checkout.html'; }
+
+    // お届け先表示
+    document.getElementById('c-name').textContent = info.name;
+    document.getElementById('c-tel').textContent = info.tel;
+    document.getElementById('c-email').textContent = info.email;
+    document.getElementById('c-zip').textContent = '〒' + info.zip;
+    document.getElementById('c-addr').textContent = info.pref + info.addr + (info.addr2 ? ' ' + info.addr2 : '');
+
+    // 支払い方法表示
+    const payInfo = {
+      cod:  { label: '代金引換', desc: '商品お届け時に配送員へお支払いください。\n手数料：330円（税込）がかかります。' },
+      bank: { label: '銀行振込', desc: '注文確認メールに記載の口座へお振込みください。\n入金確認後に発送いたします。振込手数料はお客様のご負担となります。' },
+    };
+    const pay = payInfo[info.payment] || payInfo.cod;
+    document.getElementById('c-pay-label').textContent = pay.label;
+    document.getElementById('c-pay-desc').textContent = pay.desc;
+
+    let productsCache = [];
+
+    async function loadItems() {
+      const cart = getCart();
+      if (!cart.length) { window.location.href = 'cart.html'; return; }
+      try {
+        const res = await fetch(API_BASE + '/api/products');
+        productsCache = await res.json();
+        let total = 0;
+        const html = cart.map(item => {
+          const p = productsCache.find(x => String(x.id) === String(item.id));
+          if (!p) return '';
+          const subtotal = parseInt(p.price) * item.qty;
+          total += subtotal;
+          return `<div class="summary-item"><span>${p.title} × ${item.qty}</span><span>¥${subtotal.toLocaleString()}</span></div>`;
+        }).join('');
+        document.getElementById('c-items').innerHTML = html;
+        document.getElementById('c-total').textContent = '¥' + total.toLocaleString();
+      } catch(e) { console.error(e); }
+    }
+
+    async function placeOrder() {
+      const btn = document.getElementById('order-btn');
+      btn.disabled = true;
+      btn.textContent = '処理中...';
+
+      const cart = getCart();
+      const itemsText = cart.map(item => {
+        const p = productsCache.find(x => String(x.id) === String(item.id));
+        return p ? `${p.title}×${item.qty}` : '';
+      }).filter(Boolean).join(', ');
+
+      let total = 0;
+      cart.forEach(item => {
+        const p = productsCache.find(x => String(x.id) === String(item.id));
+        if (p) total += parseInt(p.price) * item.qty;
+      });
+
+      try {
+        const res = await fetch(API_BASE + '/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ info, items: itemsText, total }),
+          credentials: 'include'
+        });
+        if (!res.ok) throw new Error('注文失敗');
+        sessionStorage.setItem('complete_info', JSON.stringify(info));
+        // カートをクリア
+        localStorage.removeItem('yoichi_cart');
+        sessionStorage.removeItem('checkout_info');
+        window.location.href = 'complete.html';
+      } catch(e) {
+        alert('注文処理に失敗しました。もう一度お試しください。');
+        btn.disabled = false;
+        btn.textContent = 'この内容で注文する';
+      }
+    }
+
+    loadItems();
+  </script>
+</body>
+</html>

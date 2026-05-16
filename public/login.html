@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ログイン - YOICHI STORE</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+    .login-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 18px;
+    }
+    .login-card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 12px 40px rgba(16,24,40,0.10);
+      padding: 36px 32px;
+      width: 100%;
+      max-width: 400px;
+    }
+    .login-card h2 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      margin: 0 0 24px;
+      background: linear-gradient(90deg, #7dd3fc 0%, #a78bfa 40%, #ff9a9e 70%, #ffd166 100%);
+      -webkit-background-clip: text; background-clip: text;
+      color: transparent; -webkit-text-fill-color: transparent;
+    }
+    .login-card label {
+      display: flex; flex-direction: column;
+      font-size: 0.9rem; color: #374151; font-weight: 600; margin-bottom: 14px;
+    }
+    .login-card input {
+      margin-top: 6px; padding: 12px 14px;
+      border: 1px solid #e5e7eb; border-radius: 10px;
+      font-size: 1rem; font-family: inherit; outline: none;
+      transition: border-color 150ms;
+    }
+    .login-card input:focus { border-color: #a78bfa; }
+    .login-card .btn {
+      width: 100%; padding: 13px; font-size: 1rem;
+      border-radius: 10px; margin-top: 8px;
+    }
+    .login-card .btn:hover { background: #374151; }
+    .sub-links {
+      margin-top: 18px; text-align: center;
+      font-size: 0.88rem; color: #6b7280;
+    }
+    .sub-links a { color: #7c3aed; text-decoration: none; font-weight: 600; }
+    .sub-links a:hover { text-decoration: underline; }
+    .back-link {
+      display: block; text-align: center;
+      margin-top: 14px; font-size: 0.88rem;
+      color: #9ca3af; text-decoration: none;
+    }
+    .back-link:hover { color: #111; }
+    .tab-wrap { display: flex; gap: 0; margin-bottom: 24px; border-radius: 10px; overflow: hidden; border: 1px solid #e5e7eb; }
+    .tab-btn {
+      flex: 1; padding: 10px; border: none; background: #f9fafb;
+      font-family: inherit; font-size: 0.95rem; cursor: pointer; font-weight: 600; color: #6b7280;
+      transition: background 150ms, color 150ms;
+    }
+    .tab-btn.active { background: #111827; color: #fff; }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+    #msg { font-size: 0.88rem; margin-top: 10px; text-align: center; min-height: 20px; }
+    .err { color: #ef4444; }
+    .ok  { color: #16a34a; }
+  </style>
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="login-card">
+      <h2>YOICHI STORE</h2>
+
+      <!-- タブ切り替え -->
+      <div class="tab-wrap">
+        <button class="tab-btn active" onclick="switchTab('login')">ログイン</button>
+        <button class="tab-btn" onclick="switchTab('register')">新規登録</button>
+      </div>
+
+      <!-- ログインフォーム -->
+      <div class="tab-pane active" id="pane-login">
+        <label>メールアドレス
+          <input type="email" id="login-email" placeholder="you@example.com" autocomplete="email">
+        </label>
+        <label>パスワード
+          <input type="password" id="login-password" placeholder="パスワード" autocomplete="current-password">
+        </label>
+        <button class="btn" onclick="doLogin()">ログイン</button>
+        <div id="msg-login" class="msg"></div>
+      </div>
+
+      <!-- 新規登録フォーム -->
+      <div class="tab-pane" id="pane-register">
+        <label>お名前
+          <input type="text" id="reg-name" placeholder="山田 太郎">
+        </label>
+        <label>メールアドレス
+          <input type="email" id="reg-email" placeholder="you@example.com" autocomplete="email">
+        </label>
+        <label>パスワード
+          <input type="password" id="reg-password" placeholder="6文字以上" autocomplete="new-password">
+        </label>
+        <button class="btn" onclick="doRegister()">登録する</button>
+        <div id="msg-register" class="msg"></div>
+      </div>
+
+      <a href="index.html" class="back-link">← ショップに戻る</a>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:4000' : '';
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach((b, i) => {
+        b.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register'));
+      });
+      document.getElementById('pane-login').classList.toggle('active', tab === 'login');
+      document.getElementById('pane-register').classList.toggle('active', tab === 'register');
+    }
+
+    function showMsg(id, text, isErr) {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      el.className = 'msg ' + (isErr ? 'err' : 'ok');
+    }
+
+    async function doLogin() {
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      if (!email || !password) return showMsg('msg-login', 'メールとパスワードを入力してください', true);
+      try {
+        const res = await fetch(API_BASE + '/api/user/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+          credentials: 'include'
+        });
+        const j = await res.json();
+        if (!res.ok) return showMsg('msg-login', j.error || 'ログイン失敗', true);
+        localStorage.setItem('yoichi_user', JSON.stringify(j.user));
+        window.location.href = 'mypage.html';
+      } catch(e) {
+        showMsg('msg-login', '通信エラーが発生しました', true);
+      }
+    }
+
+    async function doRegister() {
+      const name = document.getElementById('reg-name').value.trim();
+      const email = document.getElementById('reg-email').value.trim();
+      const password = document.getElementById('reg-password').value;
+      if (!name || !email || !password) return showMsg('msg-register', '全項目を入力してください', true);
+      if (password.length < 6) return showMsg('msg-register', 'パスワードは6文字以上にしてください', true);
+      try {
+        const res = await fetch(API_BASE + '/api/user/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password }),
+          credentials: 'include'
+        });
+        const j = await res.json();
+        if (!res.ok) return showMsg('msg-register', j.error || '登録失敗', true);
+        showMsg('msg-register', '登録完了！ログインしてください', false);
+        setTimeout(() => switchTab('login'), 1500);
+      } catch(e) {
+        showMsg('msg-register', '通信エラーが発生しました', true);
+      }
+    }
+
+    // Enterキー対応
+    document.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      if (document.getElementById('pane-login').classList.contains('active')) doLogin();
+      else doRegister();
+    });
+  </script>
+</body>
+</html>

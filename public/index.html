@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>YOICHI STORE</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    /* アイコンをバナー下端近くに配置 */
+    .hero-controls {
+      position: absolute;
+      right: 28px;
+      bottom: 24px;
+      top: auto;
+      transform: none;
+      display: flex;
+      gap: 18px;
+      z-index: 90;
+      align-items: center;
+    }
+    .search-wrap {
+      margin: 32px 0 0;
+      display: flex;
+      justify-content: center;
+    }
+    .search-box {
+      display: flex;
+      align-items: center;
+      background: #fff;
+      border-radius: 999px;
+      box-shadow: 0 8px 28px rgba(16,24,40,0.09);
+      padding: 6px 6px 6px 20px;
+      width: 100%;
+      max-width: 520px;
+      gap: 8px;
+    }
+    .search-box input {
+      border: none;
+      outline: none;
+      font-size: 1rem;
+      flex: 1;
+      background: transparent;
+      font-family: inherit;
+      color: #111;
+    }
+    .search-box input::placeholder { color: #b0b7c3; }
+    .search-box button {
+      background: #111827;
+      color: #fff;
+      border: none;
+      border-radius: 999px;
+      padding: 10px 22px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    .search-box button:hover { background: #374151; }
+  </style>
+</head>
+<body>
+  <header class="site-header" id="site-header" role="banner">
+    <div class="container header-inner">
+      <nav class="nav" aria-label="メインナビ">
+        <a href="#">Home</a>
+        <a href="#">Shop</a>
+        <a href="#">About</a>
+      </nav>
+    </div>
+
+    <div class="hero" id="hero">
+      <img src="img/banner.png" alt="バナー" class="hero-banner" />
+
+      <div class="hero-controls">
+        <!-- カートボタン -->
+        <a href="cart.html" class="icon-pill large" aria-label="カート" style="text-decoration:none;position:relative">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 3h2l.4 2M7 13h10l3-8H6.4" stroke="#111" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="20" r="1.8" fill="#111"/><circle cx="18" cy="20" r="1.8" fill="#111"/></svg>
+          <span id="cart-badge" style="display:none;position:absolute;top:6px;right:6px;background:#ef4444;color:#fff;font-size:0.65rem;font-weight:700;border-radius:999px;padding:2px 6px;line-height:1.2"></span>
+        </a>
+
+        <!-- ログイン／マイページボタン -->
+        <a href="login.html" class="icon-pill large" id="login-btn" aria-label="ログイン" style="text-decoration:none">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" stroke="#111" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 20a8 8 0 0 1 16 0" stroke="#111" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container" id="main-content">
+    <!-- 検索欄 -->
+    <div class="search-wrap">
+      <div class="search-box">
+        <input type="text" id="search-input" placeholder="商品を検索..." aria-label="商品検索">
+        <button id="search-btn">検索</button>
+      </div>
+    </div>
+
+    <section class="products">
+      <h2 class="section-title">おすすめ商品</h2>
+      <div id="products-grid" class="grid grid-large"></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">© YOICHI STORE</div>
+  </footer>
+
+  <script>
+    const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:4000' : '';
+    let allProducts = [];
+
+    // ログイン状態によってアイコンのリンク先を切り替え
+    const user = JSON.parse(localStorage.getItem('yoichi_user') || 'null');
+    if (user) {
+      document.getElementById('login-btn').href = 'mypage.html';
+      document.getElementById('login-btn').setAttribute('aria-label', 'マイページ');
+    }
+
+    // --- カート管理 ---
+    function getCart() {
+      try { return JSON.parse(localStorage.getItem('yoichi_cart') || '[]'); } catch { return []; }
+    }
+    function saveCart(cart) { localStorage.setItem('yoichi_cart', JSON.stringify(cart)); }
+    function addToCart(id) {
+      const cart = getCart();
+      const idx = cart.findIndex(x => String(x.id) === String(id));
+      if (idx !== -1) {
+        cart[idx].qty = (parseInt(cart[idx].qty, 10) || 0) + 1;
+      } else {
+        cart.push({ id: String(id), qty: 1 });
+      }
+      saveCart(cart);
+      updateBadge();
+      const btn = document.querySelector(`.add-cart[data-id="${id}"]`);
+      if (btn) {
+        btn.textContent = '追加済み ✓';
+        btn.style.background = '#16a34a';
+        setTimeout(() => { btn.textContent = 'カートに入れる'; btn.style.background = ''; }, 1200);
+      }
+    }
+    function updateBadge() {
+      const total = getCart().reduce((s, x) => s + (parseInt(x.qty, 10) || 0), 0);
+      const badge = document.getElementById('cart-badge');
+      badge.textContent = total;
+      badge.style.display = total > 0 ? 'inline-block' : 'none';
+    }
+
+    // --- 商品表示 ---
+    function renderProducts(list) {
+      const grid = document.getElementById('products-grid');
+      if (!list || list.length === 0) {
+        grid.innerHTML = '<p style="color:#9ca3af">該当する商品がありません。</p>';
+        return;
+      }
+      grid.innerHTML = list.map(p => `
+        <article class="card">
+          <img src="${API_BASE + '/uploads/' + (p.image || 'placeholder.png')}" alt="${p.title}" class="card-img">
+          <h3 class="card-title">${p.title}</h3>
+          <p class="card-price">¥${parseInt(p.price).toLocaleString()}</p>
+          <button class="btn add-cart" data-id="${p.id}" onclick="addToCart(${p.id})">カートに入れる</button>
+        </article>
+      `).join('');
+    }
+
+    // --- 検索 ---
+    function doSearch() {
+      const q = document.getElementById('search-input').value.trim().toLowerCase();
+      renderProducts(!q ? allProducts : allProducts.filter(p =>
+        p.title.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q)
+      ));
+    }
+    document.getElementById('search-btn').addEventListener('click', doSearch);
+    document.getElementById('search-input').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+    document.getElementById('search-input').addEventListener('input', doSearch);
+
+    // --- 初期ロード ---
+    async function loadProducts() {
+      try {
+        const res = await fetch(API_BASE + '/api/products');
+        allProducts = await res.json();
+        renderProducts(allProducts);
+      } catch (e) {
+        console.error(e);
+        document.getElementById('products-grid').innerHTML = '<p>商品を読み込めませんでした。</p>';
+      }
+    }
+
+    loadProducts();
+    updateBadge();
+  </script>
+  <script src="js/main.js"></script>
+</body>
+</html>

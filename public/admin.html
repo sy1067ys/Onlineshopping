@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>管理画面 - YOICHI STORE</title>
+  <style>
+    body{font-family:system-ui, "Noto Sans JP",sans-serif;padding:20px;background:#f6f7fb}
+    .wrap{max-width:1000px;margin:0 auto}
+    form{background:#fff;padding:16px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.06)}
+    input,textarea{width:100%;padding:10px;margin-top:6px;border:1px solid #e5e7eb;border-radius:8px}
+    .grid{display:grid;grid-template-columns:1fr 360px;gap:16px;margin-top:16px}
+    .list{background:#fff;padding:12px;border-radius:8px}
+    .item{display:flex;gap:12px;align-items:center;padding:8px;border-bottom:1px solid #f0f0f0}
+    .item img{width:64px;height:64px;object-fit:cover;border-radius:6px}
+    button{padding:8px 12px;border-radius:8px;border:none;background:#111827;color:#fff;cursor:pointer}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>管理画面</h1>
+
+    <div class="grid">
+      <div>
+        <form id="product-form">
+          <h3>商品を追加 / 更新</h3>
+          <input type="hidden" id="prod-id" />
+          <label>タイトル
+            <input id="title" required>
+          </label>
+          <label>価格（整数）
+            <input id="price" type="number" required>
+          </label>
+          <label>説明
+            <textarea id="description" rows="3"></textarea>
+          </label>
+          <label>画像
+            <input id="image" type="file" accept="image/*">
+          </label>
+          <div style="margin-top:10px">
+            <button type="submit">保存</button>
+            <button type="button" id="clear">クリア</button>
+          </div>
+        </form>
+      </div>
+
+      <div>
+        <div class="list">
+          <h3>商品一覧</h3>
+          <div id="product-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = 'http://localhost:4000'; // 開発用。デプロイ時は本番URLに変更
+    const listEl = document.getElementById('product-list');
+    const form = document.getElementById('product-form');
+
+    async function fetchProducts(){
+      const res = await fetch(API + '/api/products');
+      const data = await res.json();
+      listEl.innerHTML = data.map(p => `
+        <div class="item" data-id="${p.id}">
+          <img src="${API + '/uploads/' + (p.image || 'placeholder.png')}" alt="">
+          <div style="flex:1">
+            <div style="font-weight:700">${p.title}</div>
+            <div style="color:#666">¥${p.price}</div>
+          </div>
+          <div>
+            <button onclick="edit(${p.id})">編集</button>
+            <button onclick="del(${p.id})" style="background:#ef4444">削除</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function edit(id){
+      const res = await fetch(API + '/api/products');
+      const data = await res.json();
+      const p = data.find(x => x.id == id);
+      if(!p) return;
+      document.getElementById('prod-id').value = p.id;
+      document.getElementById('title').value = p.title;
+      document.getElementById('price').value = p.price;
+      document.getElementById('description').value = p.description || '';
+      window.scrollTo({top:0,behavior:'smooth'});
+    }
+
+    async function del(id){
+      if(!confirm('削除しますか？')) return;
+      await fetch(API + '/api/products/' + id, { method: 'DELETE' });
+      fetchProducts();
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('prod-id').value;
+      const title = document.getElementById('title').value;
+      const price = document.getElementById('price').value;
+      const description = document.getElementById('description').value;
+      const image = document.getElementById('image').files[0];
+
+      const fd = new FormData();
+      fd.append('title', title);
+      fd.append('price', price);
+      fd.append('description', description);
+      if(image) fd.append('image', image);
+
+      if(id){
+        await fetch(API + '/api/products/' + id, { method: 'PUT', body: fd });
+      } else {
+        await fetch(API + '/api/products', { method: 'POST', body: fd });
+      }
+      form.reset();
+      document.getElementById('prod-id').value = '';
+      fetchProducts();
+    });
+
+    document.getElementById('clear').addEventListener('click', () => {
+      form.reset();
+      document.getElementById('prod-id').value = '';
+    });
+
+    fetchProducts();
+  </script>
+</body>
+</html>
